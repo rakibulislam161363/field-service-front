@@ -39,10 +39,11 @@ export function useGoogleOAuth() {
   });
 }
 
-export function useGetMe() {
+export function useGetMe(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["user"],
     queryFn: getMe,
     retry: false,
+    enabled: options?.enabled,
   });
 }

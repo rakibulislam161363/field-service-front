@@ -1,243 +1,185 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { Eye, EyeClosed, LoaderCircle, Wrench } from "lucide-react";
 import {
-  ShieldCheck,
-  User,
-  Wrench,
-  Loader2,
-  LockKeyhole,
-} from "lucide-react";
+  GoogleLogin,
+  GoogleOAuthProvider,
+  type CredentialResponse,
+} from "@react-oauth/google";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-
-type DemoRole = "CUSTOMER" | "TECHNICIAN" | "ADMIN";
-
-interface DemoAccount {
-  role: DemoRole;
-  label: string;
-  email: string;
-  password: string;
-  icon: React.ReactNode;
-}
-
-const demoAccounts: DemoAccount[] = [
-  {
-    role: "CUSTOMER",
-    label: "Customer",
-    email: "customer@example.com",
-    password: "123456",
-    icon: <User className="h-5 w-5" />,
-  },
-  {
-    role: "TECHNICIAN",
-    label: "Technician",
-    email: "technician@example.com",
-    password: "123456",
-    icon: <Wrench className="h-5 w-5" />,
-  },
-  {
-    role: "ADMIN",
-    label: "Admin",
-    email: "admin@example.com",
-    password: "123456",
-    icon: <ShieldCheck className="h-5 w-5" />,
-  },
-];
+import { getMe, googleOAuth, userLogin } from "@/src/api";
 
 export default function LoginPage() {
   const router = useRouter();
-
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState<DemoRole | null>(null);
+  const [error, setError] = useState("");
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const finishLogin = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["user"] });
+    await queryClient.fetchQuery({
+      queryKey: ["user"],
+      queryFn: getMe,
+    });
+    router.replace("/");
+    router.refresh();
+  };
 
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-
-      // Backend login API ekhane connect korbo
-      console.log({
-        email,
-        password,
-      });
-
-      // Temporary
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      router.push("/dashboard");
+      await userLogin({ email, password });
+      await finishLogin();
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "Login failed. Check your details and try again.",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDemoLogin = async (account: DemoAccount) => {
+  const handleGoogleLogin = async (response: CredentialResponse) => {
+    if (!response.credential) {
+      setError("Google sign-in could not be completed. Please try again.");
+      return;
+    }
+
+    setError("");
+    setIsLoading(true);
     try {
-      setDemoLoading(account.role);
-
-      // Backend demo account login API ekhane connect korbo
-      console.log({
-        email: account.email,
-        password: account.password,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (account.role === "CUSTOMER") {
-        router.push("/dashboard");
-      }
-
-      if (account.role === "TECHNICIAN") {
-        router.push("/technician");
-      }
-
-      if (account.role === "ADMIN") {
-        router.push("/admin");
-      }
+      await googleOAuth({ idToken: response.credential });
+      await finishLogin();
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "Google sign-in failed. Please try again.",
+      );
     } finally {
-      setDemoLoading(null);
+      setIsLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-10">
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center justify-center">
-        <Card className="w-full shadow-lg">
-          <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <LockKeyhole className="h-6 w-6" />
-            </div>
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Wrench className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-semibold text-primary">FixItNow</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight">Welcome back</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Sign in to manage your field service account.
+          </p>
+        </div>
 
-            <div>
-              <CardTitle className="text-2xl">
-                Welcome Back 👋
-              </CardTitle>
-
-              <CardDescription className="mt-2">
-                Login to your Field Service account
-              </CardDescription>
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Login to your account</CardTitle>
+            <CardDescription>Enter the email and password linked to your account.</CardDescription>
           </CardHeader>
-
-          <CardContent className="space-y-6">
-            {/* Login Form */}
+          <CardContent className="space-y-5">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-
                 <Input
                   id="email"
+                  name="email"
                   type="email"
-                  placeholder="Enter your email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="pr-11"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? (
+                      <EyeClosed className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging in...
-                  </>
-                ) : (
-                  "Login"
-                )}
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                {isLoading ? "Signing in..." : "Login"}
               </Button>
             </form>
 
-            <div className="relative">
-              <Separator />
-
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
-                OR
-              </span>
-            </div>
-
-            {/* Demo Login */}
-            <div className="space-y-4">
-              <div className="text-center">
-                <h3 className="font-semibold">🚀 Quick Demo Login</h3>
-
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Login instantly as a different role
-                </p>
-              </div>
-
-              <div className="grid gap-3">
-                {demoAccounts.map((account) => (
-                  <Button
-                    key={account.role}
-                    type="button"
-                    variant="outline"
-                    className="h-auto justify-start gap-3 px-4 py-3"
-                    disabled={demoLoading !== null}
-                    onClick={() => handleDemoLogin(account)}
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                      {demoLoading === account.role ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        account.icon
-                      )}
-                    </div>
-
-                    <div className="text-left">
-                      <p className="font-medium">
-                        {account.label}
-                      </p>
-
-                      <p className="text-xs text-muted-foreground">
-                        Demo Login
-                      </p>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            </div>
+            {googleClientId && (
+              <>
+                <div className="flex items-center gap-3">
+                  <Separator className="flex-1" />
+                  <span className="text-xs text-muted-foreground">or continue with</span>
+                  <Separator className="flex-1" />
+                </div>
+                <div className="flex justify-center">
+                  <GoogleOAuthProvider clientId={googleClientId}>
+                    <GoogleLogin
+                      onSuccess={handleGoogleLogin}
+                      onError={() => setError("Google sign-in failed. Please try again.")}
+                      useOneTap={false}
+                    />
+                  </GoogleOAuthProvider>
+                </div>
+              </>
+            )}
 
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                onClick={() => router.push("/register")}
-                className="font-medium text-primary hover:underline"
-              >
-                Create account
-              </button>
+              <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+                Get started
+              </Link>
             </p>
           </CardContent>
         </Card>
