@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Navbar, { DashboardSidebar, type DashboardRole } from "./navbar";
 import { useGetMe } from "@/src/hooks";
-import type { User } from "@/src/types";
+import type { GetMeResponse, User } from "@/src/types";
 
 interface NavbarWrapperProps {
   children: React.ReactNode;
@@ -11,29 +11,18 @@ interface NavbarWrapperProps {
 
 type NavbarUser = Pick<User, "name" | "email" | "role">;
 
-function getNavbarUser(response: unknown): NavbarUser | null {
-  let current = response;
+function getNavbarUser(response: GetMeResponse | undefined): NavbarUser | null {
+  const profile = response?.data;
 
-  for (let depth = 0; depth < 4; depth += 1) {
-    if (!current || typeof current !== "object") {
-      return null;
-    }
-
-    const record = current as Record<string, unknown>;
-    const role = record.role;
-
-    if (
-      typeof record.name === "string" &&
-      typeof record.email === "string" &&
-      (role === "CUSTOMER" || role === "TECHNICIAN" || role === "ADMIN")
-    ) {
-      return { name: record.name, email: record.email, role };
-    }
-
-    current = record.user ?? record.data ?? record.result;
+  if (!profile) {
+    return null;
   }
 
-  return null;
+  return {
+    name: profile.name,
+    email: profile.email,
+    role: profile.role,
+  };
 }
 
 export default function NavbarWrapper({ children }: NavbarWrapperProps) {

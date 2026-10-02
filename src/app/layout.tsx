@@ -3,8 +3,9 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/providers/themeProvider";
-import { QueryProvider } from "@/components/providers/queryProvider";
+import { QueryProvider } from "../components/providers/queryProvider";
 import NavbarWrapper from "@/components/shade/NavbarWrapper";
+import { Toaster } from "@/src/components/ui/toast";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <QueryProvider>
             <NavbarWrapper>{children}</NavbarWrapper>
+            <Toaster />
           </QueryProvider>
         </ThemeProvider>
        </body>
