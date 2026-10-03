@@ -23,7 +23,7 @@ export function userLogout() {
 }
 
 export function getMe() {
-  return apiClient<GetMeResponse>("/api/auth/me");
+  return apiClient("/api/auth/me");
 }
 
 export function googleOAuth(payload: { idToken: string }) {

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/providers/themeProvider";
 import { QueryProvider } from "../components/providers/queryProvider";
 import NavbarWrapper from "@/components/shade/NavbarWrapper";
 import { Toaster } from "@/src/components/ui/toast";
+import Providers from "../providers";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
     >
+      <Providers>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <QueryProvider>
@@ -39,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </QueryProvider>
         </ThemeProvider>
        </body>
+       </Providers>
     </html>
   );
 }
